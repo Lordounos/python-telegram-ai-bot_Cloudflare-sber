@@ -1,4 +1,5 @@
-python-telegram-bot
-python-dotenv
-openai
-requests
+python-telegram-bot[socks]==21.6
+python-dotenv==1.0.1
+openai==1.54.4
+requests==2.32.3
+httpx==0.27.2
