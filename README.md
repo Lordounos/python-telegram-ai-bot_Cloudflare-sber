@@ -1,4 +1,3 @@
-
 # Python Telegram AI Bot
 
 ## Инструкции по установке
@@ -8,90 +7,98 @@
 ```bash
 git clone https://github.com/Lordounos/python-telegram-ai-bot_Cloudflare.git
 cd python-telegram-ai-bot_Cloudflare
-```
 
 Или скачайте и распакуйте архив, откройте папку в VS Code.
+2. Создайте виртуальное окружение
+bash
 
-### 2. Создайте виртуальное окружение
-
-```bash
 python -m venv venv
-```
 
 Активация:
-- **Windows:**
-  ```powershell
-  venv\Scripts\activate
-  ```
-- **macOS/Linux:**
-  ```bash
-  source venv/bin/activate
-  ```
 
-### 3. Установите зависимости
+    Windows:
+    powershell
 
-В VS Code можно поставить галочку на `requirements.txt` при создании окружения.  
+    venv\Scripts\activate
+
+    macOS/Linux:
+    bash
+
+    source venv/bin/activate
+
+3. Установите зависимости
+
+В VS Code можно поставить галочку на requirements.txt при создании окружения.
 Или через терминал:
+bash
 
-```bash
 pip install -r requirements.txt
-```
 
-### 4. Настройте переменные окружения
+4. Настройте переменные окружения
 
-Создайте файл `.env` в корне проекта:
+Создайте файл .env в корне проекта:
+dotenv
 
-```dotenv
 # Telegram
 TELEGRAM_BOT_TOKEN=ваш_токен_бота
 
-# YandexGPT
-YA_API_KEY=ваш_яндекс_api_key
-YA_FOLDER_ID=ваш_каталог_яндекс_консоли
-
 # Cloudflare Worker (для обхода блокировки api.telegram.org)
 WORKER_URL=https://tg-proxy.ваш-домен.workers.dev
-```
+
+# GigaChat (Сбер)
+GIGACHAT_CREDENTIALS=ваш_ключ_авторизации_из_Studio
+GIGACHAT_SCOPE=GIGACHAT_API_PERS
+GIGACHAT_CA_BUNDLE_FILE=russian_trusted_root_ca.pem
 
 Где взять значения:
+Переменная	Где получить
+TELEGRAM_BOT_TOKEN	@BotFather → /newbot или /mybots → API Token
+WORKER_URL	Адрес вашего Cloudflare Worker (см. раздел «Cloudflare Worker»)
+GIGACHAT_CREDENTIALS	GigaChat Studio → проект GigaChat API → Настройки API → Получить ключ
+GIGACHAT_SCOPE	GIGACHAT_API_PERS для физлиц; GIGACHAT_API_B2B / GIGACHAT_API_CORP для юрлиц
+GIGACHAT_CA_BUNDLE_FILE	Путь к файлу russian_trusted_root_ca.pem (скачать с портала Госуслуг или из документации Сбера)
+5. Положите сертификат Минцифры
 
-| Переменная | Где получить |
-|---|---|
-| `TELEGRAM_BOT_TOKEN` | [@BotFather](https://t.me/BotFather) → `/newbot` или `/mybots` → API Token |
-| `YA_API_KEY` | [Yandex Cloud Console](https://console.cloud.yandex.ru/) → сервисный аккаунт → API-ключ |
-| `YA_FOLDER_ID` | Yandex Cloud Console → каталог (folder ID) |
-| `WORKER_URL` | Адрес вашего Cloudflare Worker (см. раздел «Cloudflare Worker») |
+GigaChat API использует цепочку сертификатов Минцифры, которой нет в стандартном наборе Python. Скачайте файл russian_trusted_root_ca.pem и положите его в корень проекта рядом с bot.py.
 
-### 5. Запустите бота
+Если файл называется иначе — поправьте GIGACHAT_CA_BUNDLE_FILE в .env. Не отключайте verify_ssl_certs — передача ca_bundle_file безопаснее и рекомендована Сбером .
+6. Запустите бота
+bash
 
-```bash
 python bot.py
-```
 
 В логах должно появиться:
-```
+text
+
 INFO - __main__ - Using Cloudflare Worker base URL: https://tg-proxy.ваш-домен.workers.dev
-```
 
-Напишите боту `/start` в Telegram — он должен ответить.
+Напишите боту /start в Telegram — он должен ответить.
+Выбор LLM-сервиса
 
----
+В model.py внизу есть две строки инициализации:
+python
 
-## Cloudflare Worker: обход блокировки Telegram
+llm_1 = GigaChatService("prompts/prompt_1.txt")
+# llm_1 = OllamaService("prompts/prompt_1.txt")
 
-В РФ `api.telegram.org` часто недоступен напрямую. Worker работает как прокси:
+Раскомментируйте нужную, чтобы переключиться между облачным GigaChat и локальной Ollama. bot.py при этом менять не нужно — он вызывает chat_with_llm, которая работает с любым сервисом, реализующим метод chat(message, history).
+Cloudflare Worker: обход блокировки Telegram
 
-```
+В РФ api.telegram.org часто недоступен напрямую. Worker работает как прокси:
+text
+
 Ваш бот (локальный ПК) → Cloudflare Worker → api.telegram.org
-```
 
-### Создание Worker
+Создание Worker
 
-1. Войдите в [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create Worker**.
-2. Назовите его (например, `tg-proxy`), нажмите **Deploy**.
-3. Нажмите **Edit code**, удалите всё и вставьте:
+    Войдите в Cloudflare Dashboard → Workers & Pages → Create Worker.
 
-```javascript
+    Назовите его (например, tg-proxy), нажмите Deploy.
+
+    Нажмите Edit code, удалите всё и вставьте:
+
+javascript
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -104,57 +111,53 @@ export default {
     return res;
   },
 };
-```
 
-4. **Save and Deploy**.
+    Save and Deploy.
 
-### Проверка Worker
+Проверка Worker
+powershell
 
-```powershell
 curl.exe "https://tg-proxy.ваш-домен.workers.dev/bot<ТОКЕН>/getMe"
-```
 
-Должен вернуться JSON с `"ok":true`.
+Должен вернуться JSON с "ok":true.
+Что даёт Cloudflare помимо обхода блокировки
 
----
+    Изоляция кода — Worker выполняется в sandbox без доступа к файловой системе и внутренней сети.
 
-## Что даёт Cloudflare помимо обхода блокировки
+    Автоматический TLS — Cloudflare управляет сертификатами, вы не думаете о них.
 
-- **Изоляция кода** — Worker выполняется в sandbox без доступа к файловой системе и внутренней сети.
-- **Автоматический TLS** — Cloudflare управляет сертификатами, вы не думаете о них.
-- **Базовая защита от DDoS** — бесплатно и без настройки.
-- **Ограничение исходящих запросов** — защита от SSRF-атак.
-- **Бесплатный тариф** — 100 000 запросов в день, чего для учебного бота более чем достаточно.
+    Базовая защита от DDoS — бесплатно и без настройки.
 
-**Ограничения:** Cloudflare видит трафик в памяти (не пишет на диск), Spectre-риски теоретически существуют, но для учебного проекта не критичны.
+    Ограничение исходящих запросов — защита от SSRF-атак.
 
----
+    Бесплатный тариф — 100 000 запросов в день, чего для учебного бота более чем достаточно.
 
-## Структура проекта
+Ограничения: Cloudflare видит трафик в памяти (не пишет на диск), Spectre-риски теоретически существуют, но для учебного проекта не критичны.
+Структура проекта
+text
 
-```
 ├── bot.py                  # Точка входа, обработчики Telegram
-├── model.py                # LLM-сервис (YandexGPT)
+├── model.py                # LLM-сервисы (GigaChat, Ollama)
 ├── prompts/
 │   └── prompt_1.txt        # Системный промпт
 ├── logs/
 │   └── bot.log             # Логи (создаются автоматически)
+├── russian_trusted_root_ca.pem  # Сертификат Минцифры для GigaChat
 ├── requirements.txt
 ├── .env                    # Ваши ключи (не коммитить!)
 └── README.md
-```
 
----
-
-## Возможные проблемы
-
-### `Тишина после запуска` / таймауты `getMe`
+Возможные проблемы
+Тишина после запуска / таймауты getMe
 
 Убедитесь, что:
-1. В `WORKER_URL` нет опечаток (`.dev`, а не `.de`).
-2. В `bot.py` настроены таймауты:
 
-```python
+    В WORKER_URL нет опечаток (.dev, а не .de).
+
+    В bot.py настроены таймауты:
+
+python
+
 from telegram.request import HTTPXRequest
 
 request = HTTPXRequest(
@@ -164,27 +167,30 @@ request = HTTPXRequest(
     write_timeout=30.0,
     pool_timeout=10.0,
 )
-```
 
-### `401 Unauthorized`
+401 Unauthorized (Telegram)
 
-Токен отозван или неверный. Сделайте `/revoke` в @BotFather и замените `TELEGRAM_BOT_TOKEN`.
+Токен отозван или неверный. Сделайте /revoke в @BotFather и замените TELEGRAM_BOT_TOKEN.
+CERTIFICATE_VERIFY_FAILED (GigaChat)
 
-### `Ошибка YandexGPT: ...`
+Не найден или неверно указан файл russian_trusted_root_ca.pem. Проверьте:
 
-Проверьте `YA_API_KEY` и `YA_FOLDER_ID`. Убедитесь, что у сервисного аккаунта есть роль `ai.languageModels.user`.
+    Файл существует по пути из GIGACHAT_CA_BUNDLE_FILE.
 
-### `AsyncLibraryNotFoundError`
+    Файл в формате PEM (начинается с -----BEGIN CERTIFICATE-----).
+
+    Путь относительный (от корня проекта) или абсолютный.
+
+Ошибка GigaChat: ...
+
+Проверьте GIGACHAT_CREDENTIALS и GIGACHAT_SCOPE. Убедитесь, что ключ авторизации активен в GigaChat Studio и выбран правильный scope .
+AsyncLibraryNotFoundError
 
 Возникает при остановке бота — не критично, связано с завершением event loop. Игнорируйте.
+Безопасность
 
----
+    Не коммитьте .env — добавьте его в .gitignore.
 
-## Безопасность
+    Не публикуйте токен бота и ключ GigaChat в чатах и скриншотах. При компрометации перевыпустите ключ в GigaChat Studio.
 
-- **Не коммитьте `.env`** — добавьте его в `.gitignore`.
-- **Не публикуйте токен бота** в чатах и скриншотах. Если засветился — `/revoke` в @BotFather.
-
----
-
-о.
+    Не отключайте verify_ssl_certs для GigaChat — используйте ca_bundle_file.
