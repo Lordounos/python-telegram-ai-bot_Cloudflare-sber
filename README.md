@@ -1,14 +1,25 @@
-# Python Telegram AI Bot
+# Python Telegram AI Bot (GigaChat + Cloudflare)
 
-## Инструкции по установке
+Telegram-бот с AI-ответами на базе **GigaChat от Сбера**. Работает через **Cloudflare Worker**, что позволяет обходить блокировку `api.telegram.org` в РФ. В качестве альтернативы поддерживается локальная **Ollama**.
+
+## Возможности
+
+- Ответы на текстовые сообщения через GigaChat API (Сбер).
+- Обход блокировки Telegram через Cloudflare Worker.
+- Опциональная поддержка SOCKS5/HTTP-прокси.
+- Переключение между GigaChat и локальной Ollama одной строкой в `model.py`.
+- Логирование в файл с ротацией (`logs/bot.log`).
+
+---
+
+## Установка
 
 ### 1. Клонируйте репозиторий
 
 ```bash
-git clone https://github.com/Lordounos/python-telegram-ai-bot_Cloudflare.git
-cd python-telegram-ai-bot_Cloudflare
+git clone https://github.com/Lordounos/python-telegram-ai-bot_Cloudflare-sber.git
+cd python-telegram-ai-bot_Cloudflare-sber
 
-Или скачайте и распакуйте архив, откройте папку в VS Code.
 2. Создайте виртуальное окружение
 bash
 
@@ -27,9 +38,6 @@ python -m venv venv
     source venv/bin/activate
 
 3. Установите зависимости
-
-В VS Code можно поставить галочку на requirements.txt при создании окружения.
-Или через терминал:
 bash
 
 pip install -r requirements.txt
@@ -50,7 +58,6 @@ GIGACHAT_CREDENTIALS=ваш_ключ_авторизации_из_Studio
 GIGACHAT_SCOPE=GIGACHAT_API_PERS
 GIGACHAT_CA_BUNDLE_FILE=russian_trusted_root_ca.pem
 
-Где взять значения:
 Переменная	Где получить
 TELEGRAM_BOT_TOKEN	@BotFather → /newbot или /mybots → API Token
 WORKER_URL	Адрес вашего Cloudflare Worker (см. раздел «Cloudflare Worker»)
@@ -61,7 +68,7 @@ GIGACHAT_CA_BUNDLE_FILE	Путь к файлу russian_trusted_root_ca.pem (ск
 
 GigaChat API использует цепочку сертификатов Минцифры, которой нет в стандартном наборе Python. Скачайте файл russian_trusted_root_ca.pem и положите его в корень проекта рядом с bot.py.
 
-Если файл называется иначе — поправьте GIGACHAT_CA_BUNDLE_FILE в .env. Не отключайте verify_ssl_certs — передача ca_bundle_file безопаснее и рекомендована Сбером .
+Если файл называется иначе — поправьте GIGACHAT_CA_BUNDLE_FILE в .env. Не отключайте verify_ssl_certs — передача ca_bundle_file безопаснее и рекомендована Сбером.
 6. Запустите бота
 bash
 
@@ -120,31 +127,18 @@ powershell
 curl.exe "https://tg-proxy.ваш-домен.workers.dev/bot<ТОКЕН>/getMe"
 
 Должен вернуться JSON с "ok":true.
-Что даёт Cloudflare помимо обхода блокировки
-
-    Изоляция кода — Worker выполняется в sandbox без доступа к файловой системе и внутренней сети.
-
-    Автоматический TLS — Cloudflare управляет сертификатами, вы не думаете о них.
-
-    Базовая защита от DDoS — бесплатно и без настройки.
-
-    Ограничение исходящих запросов — защита от SSRF-атак.
-
-    Бесплатный тариф — 100 000 запросов в день, чего для учебного бота более чем достаточно.
-
-Ограничения: Cloudflare видит трафик в памяти (не пишет на диск), Spectre-риски теоретически существуют, но для учебного проекта не критичны.
 Структура проекта
 text
 
-├── bot.py                  # Точка входа, обработчики Telegram
-├── model.py                # LLM-сервисы (GigaChat, Ollama)
+├── bot.py                       # Точка входа, обработчики Telegram
+├── model.py                     # LLM-сервисы (GigaChat, Ollama)
 ├── prompts/
-│   └── prompt_1.txt        # Системный промпт
+│   └── prompt_1.txt             # Системный промпт
 ├── logs/
-│   └── bot.log             # Логи (создаются автоматически)
+│   └── bot.log                  # Логи (создаются автоматически)
 ├── russian_trusted_root_ca.pem  # Сертификат Минцифры для GigaChat
 ├── requirements.txt
-├── .env                    # Ваши ключи (не коммитить!)
+├── .env                         # Ваши ключи (не коммитить!)
 └── README.md
 
 Возможные проблемы
@@ -183,7 +177,10 @@ CERTIFICATE_VERIFY_FAILED (GigaChat)
 
 Ошибка GigaChat: ...
 
-Проверьте GIGACHAT_CREDENTIALS и GIGACHAT_SCOPE. Убедитесь, что ключ авторизации активен в GigaChat Studio и выбран правильный scope .
+Проверьте GIGACHAT_CREDENTIALS и GIGACHAT_SCOPE. Убедитесь, что ключ авторизации активен в GigaChat Studio и выбран правильный scope.
+Repository not found при git push
+
+Репозиторий на GitHub не создан или URL в origin указан с опечаткой. Создайте пустой репозиторий через github.com/new (без README и .gitignore) и проверьте git remote -v.
 AsyncLibraryNotFoundError
 
 Возникает при остановке бота — не критично, связано с завершением event loop. Игнорируйте.
@@ -191,6 +188,10 @@ AsyncLibraryNotFoundError
 
     Не коммитьте .env — добавьте его в .gitignore.
 
-    Не публикуйте токен бота и ключ GigaChat в чатах и скриншотах. При компрометации перевыпустите ключ в GigaChat Studio.
+    Не публикуйте токен бота и ключ GigaChat в чатах и скриншотах. При компрометации перевыпустите ключ в GigaChat Studio и сделайте /revoke в @BotFather.
 
     Не отключайте verify_ssl_certs для GigaChat — используйте ca_bundle_file.
+
+Лицензия
+
+Учебный проект. Используйте на своё усмотрение.
